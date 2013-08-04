@@ -95,10 +95,10 @@ def get_time_from_str_time(str_time):
 def get_time_labels_from_time_ranges(time_ranges):
   time_labels = []
   for time_range in time_ranges:
-    print 'time_range', time_range 
+    #print 'time_range', time_range 
     if not is_time_range_a_tuple_of_times(time_range):
-      print 'FALSE', time_range
-      print type(time_range)
+      #print 'FALSE', time_range
+      #print type(time_range)
       continue
     p_time_start = time_range[0] 
     p_time_finish = time_range[1] 
@@ -116,6 +116,21 @@ def print_map_labels_to_time_start_and_finish():
   for label in map_labels_to_time_start_and_finish.keys():
     print label, map_labels_to_time_start_and_finish[label]
 
+def convert_contiguous_time_labels_to_a_time_start_and_finish_tuple(contiguous_time_labels):
+  resulting_time_start  = None
+  resulting_time_finish = None 
+  for time_label in contiguous_time_labels:
+    try:
+      time_start, time_finish = map_labels_to_time_start_and_finish[time_label]
+      if resulting_time_start == None or time_start < resulting_time_start:
+        resulting_time_start = time_start
+      if resulting_time_finish == None or time_finish > resulting_time_finish:
+        resulting_time_finish = time_finish
+    except KeyError:
+      continue
+  return (resulting_time_start, resulting_time_finish) 
+
+
 def test1():
   print map_labels_to_time_start_and_finish
   time_start = time(hour=7, minute=30)
@@ -128,6 +143,8 @@ def test1():
   time_range = (time_start, time_finish) 
   time_ranges.append(time_range) 
   print get_time_labels_from_time_ranges(time_ranges)
+  
+  
   
 def process():
   test1()

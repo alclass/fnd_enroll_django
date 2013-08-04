@@ -9,7 +9,7 @@ from datetime import time # date #, timedelta
 #import os
 
 import __init__
-#import local_settings as ls
+import local_settings as ls
 import timeutils
 
 '''
@@ -25,68 +25,36 @@ L8  IVAN SIMOES GARCIA
 
 from TimeTableDictMod import TimeTableDict 
 
-class Discipline(object):
+default_facultadas_id_list = None
+def get_default_facultadas_id_list():
+  global default_facultadas_id_list
+  if default_facultadas_id_list != None:
+    return default_facultadas_id_list
+  lines = open(ls.get_default_ids_facultadas_abspath()).readlines()
+  default_facultadas_id_list = []
+  for line in lines:
+    discipline_id = line.lstrip(' \t').rstrip(' \t\r\n')
+    default_facultadas_id_list.append(discipline_id)
+  return default_facultadas_id_list
+
+
+class Turma(object):
   
-  attrib_strs = ['code', 'group', 'name', 'timetable', 'instructor']
-
   def __init__(self):
-    self.init_attribs()
-    self.disciplines = []
-    self.timetable = TimeTableDict()
-    self.contiguous_time_start_and_finish_tuple_list = []
-
-  def init_attribs(self):
-    '''
-    self.code   = None 
-    self.group = None 
-    self.name  = None 
-    self.weekday3l  = None 
-    self.times      = None
+    self.code = None    
+    self.name = None
     self.instructor = None
-    '''
-    for attrib_str in self.attrib_strs:
-      exec('self.%s = None' %attrib_str) 
-    self.attribs_dict = None
-    _ = self.return_attribs_dict()
+    self.timetable = TimeTableDict()
 
-  def set_id(self, code):
-    self._id  = code
-    self.code = code
-    
   def add_timetable_element(self, weekday, time_range):
     if not timeutils.is_time_range_a_tuple_of_times(time_range):
       return False
     self.timetable[weekday] = time_range
     return True
-    
-
-  def add_contiguous_time_start_and_finish_tuple(self, time_start_and_finish_tuple):
-    self.contiguous_time_start_and_finish_tuple_list.append(time_start_and_finish_tuple)
-    
-  def return_attribs_dict(self):
-    if self.attribs_dict == None:
-      self.init_attribs_dict()
-    return self.attribs_dict 
   
-  def init_attribs_dict(self): 
-    self.attribs_dict = {}
-    for attrib_str in self.attrib_strs:
-      if eval('self.%s' %attrib_str) == None:
-        continue 
-      exec_str = 'self.attribs_dict["%(key)s"]="%(value)s"' %{'key':attrib_str, 'value':eval('self.%s' %attrib_str)}
-      print exec_str
-      exec(exec_str) 
-    return self.attribs_dict
-  
-  def is_within_comparative_time_start_and_finish(self, time_start_and_finish_tuple):
-    pass
-      
   def __unicode__(self):
-    outstr = u'Disciplina:\n=============\n' 
-    for attrib_str in self.attrib_strs:
-      if eval('self.%s' %attrib_str) == None:
-        continue 
-      outstr += '%(key)s = %(value)s\n' %{'key':attrib_str, 'value':eval('self.%s' %attrib_str)}
+    outstr = u'Turma nº %s :: %s\n' %(self.code, self.name)
+    outstr += u'Prof.: %s\n' %self.instructor
     outstr += str(self.timetable)
     return outstr
 
@@ -94,25 +62,100 @@ class Discipline(object):
     return self.__unicode__()
     
 
+  def add_timetable_element_from_str_time_range(self, weekday, str_time_range):
+    if weekday not in xrange(0, 7):
+      return False
+    try:
+      pp = str_time_range.split(' ')
+      str_time_start, str_time_finish = pp[0], pp[2]
+      time_start  = timeutils.get_time_from_str_time(str_time_start)
+      time_finish = timeutils.get_time_from_str_time(str_time_finish)
+      if time_start == None or time_finish == None:
+        return False
+      time_range  = (time_start, time_finish)
+      return self.add_timetable_element(weekday, time_range)
+    except IndexError:
+      pass
+    return False
+
+
+class Discipline(object):
+  
+  instance_store_dict = {}
+
+  @staticmethod
+  def get_discipline_from_store_or_create_and_store_it(code):
+    if Discipline.instance_store_dict.has_key(code):
+      discipline = Discipline.instance_store_dict[code]
+      discipline.add_empty_current_turma()
+      return discipline
+    discipline = Discipline(code)
+    Discipline.instance_store_dict[code] = discipline
+    return discipline
+
+  @staticmethod
+  def get_all_stored_disciplines():
+    return Discipline.instance_store_dict.values()
+
+  def __init__(self, code):
+    '''
+    '''
+    self.code = code
+    self.turmas = []
+    self.add_empty_current_turma()
+
+  def add_empty_current_turma(self):
+    self.current_turma = Turma()
+    self.turmas.append(self.current_turma)
+    
+  def __unicode__(self):
+    outstr = u'Disciplina: %s\n' %self.code 
+    outstr += u'Turma(s):\n'
+    for turma in self.turmas:
+      outstr += str(turma)
+    return outstr
+
+  def __str__(self):
+    return self.__unicode__()
+    
+
 def test1():
-  d = Discipline()
-  d.set_id('IUS518')  
-  d.name = 'Direito da Integração'
+  code = 'IUS518'
+  d = Discipline(code)
+  d.current_turma.code = '1234'
+  d.current_turma.name = 'Direito da Integração'
+  d.current_turma.instructor = 'João Alves'
+  #
   time_start  = time(hour=7,minute=30)
   time_finish = time(hour=9,minute=10)
   time_range  = time_start, time_finish
-  result = d.add_timetable_element(0, time_range)
+  result = d.current_turma.add_timetable_element(0, time_range)
   print 'Added', time_range, result
   time_start  = time(hour=10,minute=30)
   time_finish = time(hour=11,minute=20)
   time_range  = time_start, time_finish
-  result = d.add_timetable_element(2, time_range)
+  result = d.current_turma.add_timetable_element(2, time_range)
   print 'Added', time_range, result
   print d
 
+
+def process2():
+  timetable = None
+  if '-w' in sys.argv:
+    weekday = get_weekday()
+    if '-t' in sys.argv:
+      times = get_times()
+    timetable = TimeTableDict()
+    timetable[weekday] = times
+  if timetable:
+    scraper = TextDataScraper()
+    scraper.find_by_
   
 def process():
-  test1()  
+  id_list = get_default_facultadas_id_list()
+  print id_list
+  print 'Total', len(id_list)
+  test1()
         
 if __name__ == '__main__':
   process()
