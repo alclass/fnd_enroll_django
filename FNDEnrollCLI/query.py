@@ -19,6 +19,23 @@ class Query(object):
   def __init__(self):
     self.disciplines = Disciplines()
     self.disciplines.read_disciplines_from_xml()
+
+  def list_facultadas(self):
+    disciplines = Discipline.get_facultadas()
+    print 'Total facultadas', len(disciplines)
+    for discipline in disciplines:
+      eletiva_msg = ''
+      if discipline.is_elective:
+        eletiva_msg = '(Elet.)'
+      print discipline.code, discipline.name, eletiva_msg
+         
+  def list_cursadas(self):
+    disciplines = Discipline.get_cursadas()
+    for discipline in disciplines:
+      eletiva_msg = ''
+      if discipline.is_elective:
+        eletiva_msg = '(Elet.)'
+      print discipline.code, discipline.name, eletiva_msg
     
   def list_by_timetable(self):
     weekday = None
@@ -35,9 +52,9 @@ class Query(object):
     #self.disciplines.search_by_time_labels(time_labels, weekday)
     #discipline = Discipline.get_discipline_from_store_or_None('IUF525')
     for discipline in self.disciplines.get_all_disciplines():
-      if not discipline.is_it_allowed_to_course():
+      if not discipline.is_it_facultada():
         continue
-      if discipline.is_it_coursed_already():
+      if discipline.is_it_cursada():
         continue
       for turma in discipline.get_turmas():
         #print 'turma', turma.name, turma.timetable.show_timetable_in_1_line(), turma.timetable.show_timelabels_in_1_line()
@@ -47,12 +64,22 @@ class Query(object):
             eletiva_msg = '(elet.)'
           print discipline.code, turma.name, eletiva_msg, turma.timetable.show_timetable_in_1_line(), turma.instructor
   
+  
+
     
 def dispatch_for_commands():
+  query = Query()
   if 'times' in sys.argv:
-    query = Query()
     query.list_by_timetable()
-   
+    return
+  elif 'list' in sys.argv:
+    if 'facultadas' in sys.argv:
+      query.list_facultadas()
+      return
+    elif 'cursadas' in sys.argv:
+      query.list_cursadas()
+      return
+    
 def print_help_and_exit():
   print '''
   Usage:

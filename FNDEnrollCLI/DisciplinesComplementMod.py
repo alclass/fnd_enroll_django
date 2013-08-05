@@ -31,7 +31,7 @@ class DisciplinesComplement(object):
     return DisciplinesComplement.facultadas_dict
     
   @staticmethod
-  def get_coursed_already_dict():
+  def get_cursadas_dict():
     if DisciplinesComplement.coursed_already_dict == None:
       text_filename = 'ids_de_cursadas.txt'
       text_file_abspath = os.path.join(ls.get_app_data_dir_abspath(), text_filename)
@@ -59,10 +59,12 @@ def process():
   T.m1()
   sys.exit(0)
   '''
-  coursed = DisciplinesComplement.get_coursed_already_dict().keys()
-  print 'Cursadas:', coursed
-  coursed = DisciplinesComplement.get_facultadas_dict().keys()
-  print 'Facultadas:', coursed
+  cursadas = DisciplinesComplement.get_cursadas_dict().keys()
+  print 'Cursadas:', cursadas
+  print 'Total', len(cursadas)
+  facultadas = DisciplinesComplement.get_facultadas_dict().keys()
+  print 'Facultadas:', facultadas
+  print 'Total', len(facultadas)
         
 if __name__ == '__main__':
   process()

@@ -130,19 +130,43 @@ class Discipline(object):
   def get_turmas(self):
     return self.turmas_dict.values()
   
-  def get_facultadas_dict(self):
-    return DisciplinesComplement.get_facultadas_dict()
+  @staticmethod
+  def get_facultadas():
+    facultadas_dict = DisciplinesComplement.get_facultadas_dict()
+    if facultadas_dict == None:
+      return []
+    disciplines = []
+    for code in facultadas_dict.keys():
+      discipline = Discipline.get_discipline_from_store_or_None(code)
+      if discipline != None:
+        disciplines.append(discipline)
+    return disciplines
 
-  def is_it_allowed_to_course(self):
-    if self.code in self.get_facultadas_dict().keys():
+  def is_it_facultada(self):
+    facultadas_dict = DisciplinesComplement.get_facultadas_dict()
+    if facultadas_dict == None:
+      return False
+    if self.code in facultadas_dict.keys():
       return True
     return False
 
-  def get_coursed_already_dict(self):
-    return DisciplinesComplement.get_coursed_already_dict()
+  @staticmethod
+  def get_cursadas():
+    coursed_already_dict = DisciplinesComplement.get_cursadas_dict()
+    if coursed_already_dict == None:
+      return []
+    disciplines = []
+    for code in coursed_already_dict.keys():
+      discipline = Discipline.get_discipline_from_store_or_None(code)
+      if discipline != None:
+        disciplines.append(discipline)
+    return disciplines
   
-  def is_it_coursed_already(self):
-    if self.code in self.get_coursed_already_dict().keys():
+  def is_it_cursada(self):
+    coursed_already_dict = DisciplinesComplement.get_cursadas_dict()
+    if coursed_already_dict == None:
+      return False
+    if self.code in coursed_already_dict.keys():
       return True
     return False
     
@@ -177,18 +201,6 @@ def test1():
   print d
 
 
-def process2():
-  timetable = None
-  if '-w' in sys.argv:
-    weekday = get_weekday()
-    if '-t' in sys.argv:
-      times = get_times()
-    timetable = TimeTableDict()
-    timetable[weekday] = times
-  if timetable:
-    scraper = TextDataScraper()
-    scraper.find_by_
-  
 def process():
   id_list = get_default_facultadas_id_list()
   print id_list
