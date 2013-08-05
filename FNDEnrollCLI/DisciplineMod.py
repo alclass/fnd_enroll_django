@@ -24,6 +24,7 @@ L8  IVAN SIMOES GARCIA
 '''
 
 from TimeTableDictMod import TimeTableDict 
+from DisciplinesComplementMod import DisciplinesComplement
 
 default_facultadas_id_list = None
 def get_default_facultadas_id_list():
@@ -40,8 +41,8 @@ def get_default_facultadas_id_list():
 
 class Turma(object):
   
-  def __init__(self):
-    self.code = None    
+  def __init__(self, turma_code_number):
+    self.code = turma_code_number    
     self.name = None
     self.instructor = None
     self.timetable = TimeTableDict()
@@ -50,6 +51,15 @@ class Turma(object):
     if not timeutils.is_time_range_a_tuple_of_times(time_range):
       return False
     self.timetable[weekday] = time_range
+    return True
+  
+  def does_turma_happen_at_time_labels(self, weekday, p_time_labels):
+    time_labels = self.timetable.get_time_labels_for_weekday(weekday)
+    if time_labels == None or time_labels == []:
+      return False
+    for p_time_label in p_time_labels:
+      if p_time_label not in time_labels:
+        return False 
     return True
   
   def __unicode__(self):
@@ -87,12 +97,18 @@ class Discipline(object):
   def get_discipline_from_store_or_create_and_store_it(code):
     if Discipline.instance_store_dict.has_key(code):
       discipline = Discipline.instance_store_dict[code]
-      discipline.add_empty_current_turma()
       return discipline
     discipline = Discipline(code)
     Discipline.instance_store_dict[code] = discipline
     return discipline
 
+  @staticmethod
+  def get_discipline_from_store_or_None(code):
+    if Discipline.instance_store_dict.has_key(code):
+      discipline = Discipline.instance_store_dict[code]
+      return discipline
+    return None
+  
   @staticmethod
   def get_all_stored_disciplines():
     return Discipline.instance_store_dict.values()
@@ -101,12 +117,34 @@ class Discipline(object):
     '''
     '''
     self.code = code
-    self.turmas = []
-    self.add_empty_current_turma()
+    self.turmas_dict = {}
 
-  def add_empty_current_turma(self):
-    self.current_turma = Turma()
-    self.turmas.append(self.current_turma)
+  def add_new_turma(self, turma_code_number):
+    new_turma = Turma(turma_code_number)
+    self.turmas_dict[turma_code_number] = new_turma 
+    self.current_turma_code = turma_code_number
+    
+  def get_current_turma(self):
+    return self.turmas_dict[self.current_turma_code]
+
+  def get_turmas(self):
+    return self.turmas_dict.values()
+  
+  def get_facultadas_dict(self):
+    return DisciplinesComplement.get_facultadas_dict()
+
+  def is_it_allowed_to_course(self):
+    if self.code in self.get_facultadas_dict().keys():
+      return True
+    return False
+
+  def get_coursed_already_dict(self):
+    return DisciplinesComplement.get_coursed_already_dict()
+  
+  def is_it_coursed_already(self):
+    if self.code in self.get_coursed_already_dict().keys():
+      return True
+    return False
     
   def __unicode__(self):
     outstr = u'Disciplina: %s\n' %self.code 

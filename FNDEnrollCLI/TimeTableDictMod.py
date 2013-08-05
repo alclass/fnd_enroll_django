@@ -19,6 +19,7 @@ class TimeTableDict(dict):
   
   def __init__(self, *args):
     dict.__init__(self, args)
+    self.weekday_time_labels_dict = {}
     
   def __setitem__(self, weekdaykey, time_range):
     if not timeutils.is_time_range_a_tuple_of_times(time_range):
@@ -34,6 +35,26 @@ class TimeTableDict(dict):
       time_range_list = dict.__setitem__(self, weekdaykey, time_range_list)
       #self[weekdaykey] = time_range_list 
       #print 'time_range_list', time_range_list 
+    self.update_weekday_time_labels_dict()
+
+  def update_weekday_time_labels_dict(self):
+    weekdays = dict.keys(self)
+    for weekday in weekdays: 
+      time_ranges = dict.__getitem__(self, weekday)
+      time_labels = timeutils.get_time_labels_from_time_ranges(time_ranges)
+      self.weekday_time_labels_dict[weekday] = time_labels 
+
+  def get_time_labels_for_weekday(self, weekday):
+    if self.weekday_time_labels_dict.has_key(weekday):
+      return self.weekday_time_labels_dict[weekday]
+    return []
+  
+  def get_time_labels_for_weekday_old(self, weekdaykey):
+    if not dict.has_key(self, weekdaykey):
+      return None
+    time_range_list = dict.__getitem__(self, weekdaykey)
+    time_labels = timeutils.convert_time_ranges_to_time_labels(time_range_list)
+    return time_labels 
     
   #def get_time_ranges_by_weekday(self, weekday):
     #return self[weekday]
@@ -84,6 +105,35 @@ class TimeTableDict(dict):
     Yet to implement ! 
     '''
     pass
+
+  def show_timelabels_in_1_line(self):
+    outstr = ''
+    weekdays = self.keys()
+    weekdays.sort()
+    for weekday in weekdays:
+      time_labels = self.weekday_time_labels_dict[weekday] #.get_time_ranges_by_weekday(weekday)
+      outstr += ' %s %s, ' %(timeutils.dict_pt_3_letter_weekday[weekday], str(time_labels))
+    return outstr
+
+  def show_timelabels_in_1_line_old(self):
+    outstr = ''
+    weekdays = self.keys()
+    weekdays.sort()
+    for weekday in weekdays:
+      time_ranges = self[weekday] #.get_time_ranges_by_weekday(weekday)
+      time_labels = timeutils.get_time_labels_from_time_ranges(time_ranges)
+      outstr += ' %s %s, ' %(timeutils.dict_pt_3_letter_weekday[weekday], str(time_labels))
+    return outstr
+
+  def show_timetable_in_1_line(self):
+    outstr = ''
+    weekdays = self.keys()
+    weekdays.sort()
+    for weekday in weekdays:
+      time_ranges = self[weekday] #.get_time_ranges_by_weekday(weekday)
+      for time_range in time_ranges:
+        outstr += ' %s %s-%s, ' %(timeutils.dict_pt_3_letter_weekday[weekday], str(time_range[0]),str(time_range[1]))
+    return outstr
   
   def __str__(self):
     outstr = '' #'Tempos:\n=======\n'

@@ -10,6 +10,25 @@ from datetime import time
 import datetime
 
 dict_pt_3_letter_weekday = {0:'Seg',1:'Ter',2:'Qua',3:'Qui',4:'Sex', 5:'Sab',6:'Dom'}
+labels_contiguity = ['M1','M2','M3','M4','M5','T1','T2','T3','T4','T5','T6','T7','N1','N2','N3','N4','N5']
+def put_time_labels_in_order(p_time_labels):
+  '''
+  Because N is before T alphabetically, the sorting process is done 2-stepfully
+  ie, first we sort from M1 to T7, then, secondly, we sort from N1 to N5
+  Thirdly and last, we concatenate the two 
+  '''
+  labels_manha_and_tarde = labels_contiguity[:12] # 12 is 5 + 7, ie, M1 to M5 plus T1 to T7
+  p_labels_manha_and_tarde = []
+  p_labels_noite = []  
+  for time_label in p_time_labels:
+    if time_label in labels_manha_and_tarde:
+      p_labels_manha_and_tarde.append(time_label)
+    else:
+      p_labels_noite.append(time_label)
+  p_labels_manha_and_tarde.sort()
+  p_labels_noite.sort()
+  return p_labels_manha_and_tarde + p_labels_noite 
+
 map_labels_to_time_start_and_finish_strs = {
   'M1':(u'7:30', u'8:20'),
   'M2':(u'8:20', u'9:10'),
@@ -59,6 +78,10 @@ def is_time_range_a_tuple_of_times(time_range):
     pass
   return False
 
+def get_str_hour_minute_from_pytime(pytime):
+  if type(pytime) != datetime.time:
+    return None
+  return '%02d:%02d' %(pytime.hour, pytime.minute)
 
 f_index_find = lambda x, v: v == x[1]  
 def get_weekday_from_weekday3l_impl2(weekday3l):
@@ -110,6 +133,7 @@ def get_time_labels_from_time_ranges(time_ranges):
       if p_time_start < time_finish <= p_time_finish:
         if label not in time_labels: 
           time_labels.append(label)
+  time_labels = put_time_labels_in_order(time_labels)
   return time_labels
 
 def print_map_labels_to_time_start_and_finish():
@@ -130,6 +154,51 @@ def convert_contiguous_time_labels_to_a_time_start_and_finish_tuple(contiguous_t
       continue
   return (resulting_time_start, resulting_time_finish) 
 
+def convert_time_labels_to_time_ranges(time_labels):
+  time_ranges = []
+  for time_label in time_labels:
+    try:
+      time_start, time_finish = map_labels_to_time_start_and_finish[time_label]
+      time_range = time_start, time_finish
+      time_ranges.append(time_range)
+    except KeyError:
+      continue
+  return time_ranges
+
+def convert_time_ranges_to_time_labels(time_ranges):
+  time_labels = []
+  all_time_ranges = map_labels_to_time_start_and_finish.items()
+  all_labels, all_time_ranges = zip(*all_time_ranges)
+  all_time_starts, all_time_finishes = zip(*all_time_ranges)
+  all_time_starts = list(all_time_starts)
+  #all_time_starts.sort()
+  all_time_finishes = list(all_time_finishes)
+  #all_time_finishes.sort()
+  #print all_time_starts
+  #print all_time_finishes
+  for time_range in time_ranges:
+    time_start  = time_range[0]
+    time_finish = time_range[1]
+    try:
+      index = all_time_starts.index(time_start)
+      label_start = all_labels[index]
+      time_labels.append(label_start)
+      #print 'label_start', label_start 
+      #print 'time_finish', time_finish
+      index = all_time_finishes.index(time_finish)
+      label_finish = all_labels[index]
+      time_labels.append(label_finish)
+      #print 'label_finish', label_finish 
+      #index_finish = labels_contiguity.index(label_finish)
+      #index_start  = labels_contiguity.index(label_start)
+      #time_labels = labels_contiguity[index_start : index_finish + 1]
+      #return time_labels
+    except ValueError:
+      pass
+  time_labels = list(set(time_labels))
+  time_labels = put_time_labels_in_order(time_labels)
+  return time_labels
+      
 
 def test1():
   print map_labels_to_time_start_and_finish
@@ -144,10 +213,20 @@ def test1():
   time_ranges.append(time_range) 
   print get_time_labels_from_time_ranges(time_ranges)
   
+def test2():
+  time_ranges = []
+  time_range = map_labels_to_time_start_and_finish['T1']
+  print 'T1 time_range', time_range
+  time_ranges.append(time_range)
+  time_range = map_labels_to_time_start_and_finish['T2']
+  print 'T2 time_range', time_range
+  time_ranges.append(time_range)
+  print convert_time_ranges_to_time_labels(time_ranges)
   
   
 def process():
-  test1()
+  #test1()
+  test2()
   #print_map_labels_to_time_start_and_finish()  
         
 
@@ -172,3 +251,4 @@ class TestCase(unittest.TestCase):
 if __name__ == '__main__':
   process()
   # unittest.main()  
+  
