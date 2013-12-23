@@ -17,8 +17,16 @@ class TimeRangesWithinAWeekday(list):
   '''
   This class (TimeRangesWithinAWeekday) extends from list
   Its main purpose is to post-process the list of time ranges so that if ranges overlap, they become unified
+  The class also breaks ranges apart if some part of it is removed
   
-  Example:
+  The 2 examples below illustrate the 2 cases, ie:
+    1) the summation with possible contiguealization
+    2) the extraction with possible uncontiguealization
+  
+  (The 2) Examples:
+
+  1) Contiguealization
+
   Suppose we have this time range list:
     [(M1,M2), (M3,M4), (T1,T3)] 
   
@@ -26,8 +34,19 @@ class TimeRangesWithinAWeekday(list):
     [(M1,M4), (T1,T3)] 
 
   Notice that the two ranges (M1,M2), (M3,M4) fused into only one range, ie, (M1,M4)
-  '''
+
+  2) Uncontiguealization
+
+  Suppose we have this time range list:
+    [(M1,T1)] 
   
+  Suppose further that we remove time range (M3,T4) from it
+  Because of this removal, the list gets uncontiguealized, ie, the resulting list becomes: 
+    [(M1,M2), (M5,T1)] 
+
+  Notice that the one range (M1,T1) subtracted of (M3,M4) get broken into two ranges, ie, (M1,M2) and (M5,T1)
+
+  '''
   
   def __init__(self, *args):
     '''
@@ -82,6 +101,18 @@ class TestCase(unittest.TestCase):
   def make_table1(self):
     pass
 
-  def test1_equal_tables(self):
-    pass
+  def test1_verify_contiguealization(self):
+    weekday_time_ranges = TimeRangesWithinAWeekday()
+    weekday_time_ranges.append(K.M1, K.M2)    
+    weekday_time_ranges.append(K.M3, K.M4)
+    weekday_time_ranges_already_given_contiguous = TimeRangesWithinAWeekday((K.M3, K.M4))
+    self.assertEqual(weekday_time_ranges, weekday_time_ranges_already_given_contiguous)
 
+  def test1_verify_removal_and_breaking_of_contiguealization(self):
+    weekday_time_ranges = TimeRangesWithinAWeekday()
+    weekday_time_ranges.append((K.M1, K.T1))    
+    weekday_time_ranges.remove_range((K.M3, K.M4))
+    weekday_time_ranges_already_given_uncontiguous = TimeRangesWithinAWeekday()
+    weekday_time_ranges_already_given_uncontiguous.append((K.M1, K.M2))
+    weekday_time_ranges_already_given_uncontiguous.append((K.M5, K.T1))
+    self.assertEqual(weekday_time_ranges, weekday_time_ranges_already_given_uncontiguous)
