@@ -1,5 +1,5 @@
-# -*- coding: utf-8 -*-
-# local_settings.py
+#!/usr/bin/env python
+#-*-coding:utf-8-*-
 '''
 timeutils.py
 
@@ -8,26 +8,6 @@ timeutils.py
 
 from datetime import time
 import datetime
-
-dict_pt_3_letter_weekday = {0:'Seg',1:'Ter',2:'Qua',3:'Qui',4:'Sex', 5:'Sab',6:'Dom'}
-labels_contiguity = ['M1','M2','M3','M4','M5','T1','T2','T3','T4','T5','T6','T7','N1','N2','N3','N4','N5']
-def put_time_labels_in_order(p_time_labels):
-  '''
-  Because N is before T alphabetically, the sorting process is done 2-stepfully
-  ie, first we sort from M1 to T7, then, secondly, we sort from N1 to N5
-  Thirdly and last, we concatenate the two 
-  '''
-  labels_manha_and_tarde = labels_contiguity[:12] # 12 is 5 + 7, ie, M1 to M5 plus T1 to T7
-  p_labels_manha_and_tarde = []
-  p_labels_noite = []  
-  for time_label in p_time_labels:
-    if time_label in labels_manha_and_tarde:
-      p_labels_manha_and_tarde.append(time_label)
-    else:
-      p_labels_noite.append(time_label)
-  p_labels_manha_and_tarde.sort()
-  p_labels_noite.sort()
-  return p_labels_manha_and_tarde + p_labels_noite 
 
 map_labels_to_time_start_and_finish_strs = {
   'M1':(u'7:30', u'8:20'),
@@ -60,6 +40,55 @@ def form_map_labels_to_time_start_and_finish():
     time_range = time(hour=int(str_hour_start), minute=int(str_minute_start)), time(hour=int(str_hour_finish), minute=int(str_minute_finish))  
     map_labels_to_time_start_and_finish[label] = time_range
 form_map_labels_to_time_start_and_finish()
+
+dict_pt_3_letter_weekday = {0:'Seg',1:'Ter',2:'Qua',3:'Qui',4:'Sex', 5:'Sab',6:'Dom'}
+labels_contiguity = ['M1','M2','M3','M4','M5','T1','T2','T3','T4','T5','T6','T7','N1','N2','N3','N4','N5']
+def put_time_labels_in_order(p_time_labels):
+  '''
+  Because N is before T alphabetically, the sorting process is done 2-stepfully
+  ie, first we sort from M1 to T7, then, secondly, we sort from N1 to N5
+  Thirdly and last, we concatenate the two 
+  '''
+  labels_manha_and_tarde = labels_contiguity[:12] # 12 is 5 + 7, ie, M1 to M5 plus T1 to T7
+  p_labels_manha_and_tarde = []
+  p_labels_noite = []  
+  for time_label in p_time_labels:
+    if time_label in labels_manha_and_tarde:
+      p_labels_manha_and_tarde.append(time_label)
+    else:
+      p_labels_noite.append(time_label)
+  p_labels_manha_and_tarde.sort()
+  p_labels_noite.sort()
+  return p_labels_manha_and_tarde + p_labels_noite 
+
+
+class K:
+  MONDAY    = 0
+  TUESDAY   = 1
+  WEDNESDAY = 2
+  THURSDAY  = 3
+  FRIDAY    = 4
+  SATURDAY  = 5
+  SUNDAY    = 6
+  M1 = 'M1'; M2 = 'M2'; M3 = 'M3'; M4 = 'M4'; M5 = 'M5'
+  T1 = 'T1'; T2 = 'T2'; T3 = 'T3'; T4 = 'T4'; T5 = 'T5'; T6 = 'T6'; T7 = 'T7'
+  N1 = 'N1'; N2 = 'N2'; N3 = 'N3'; N4 = 'N4'; N5 = 'N5'
+
+  @staticmethod
+  def validate_label_or_raise(time_label):
+    if time_label not in labels_contiguity:
+      raise ValueError, 'time_label (=%s) not in labels_contiguity (=%s)' %(time_label, str(labels_contiguity))
+
+  @staticmethod
+  def get_time_range_from_time_labels(label_start, label_finish):
+    K.validate_label_or_raise(label_start)
+    K.validate_label_or_raise(label_finish)
+    p_time_labels = label_start, label_finish
+    p_time_labels = put_time_labels_in_order(p_time_labels)
+    time_range_start = map_labels_to_time_start_and_finish[p_time_labels[0]]
+    time_range_finish = map_labels_to_time_start_and_finish[p_time_labels[1]]
+    return time_range_start, time_range_finish 
+
 
 def is_time_range_a_tuple_of_times(time_range):
   if type(time_range) != tuple:

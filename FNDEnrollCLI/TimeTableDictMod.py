@@ -13,52 +13,54 @@ import os
 import __init__
 #import local_settings as ls
 import timeutils
+from timeutils import K
 
 
 class TimeTableDict(dict):
   
   def __init__(self, *args):
-    dict.__init__(self, args)
+    super(TimeTableDict, self).__init__(args)
     self.weekday_time_labels_dict = {}
     
   def __setitem__(self, weekdaykey, time_range):
     if not timeutils.is_time_range_a_tuple_of_times(time_range):
       return
-    if dict.has_key(self, weekdaykey):
-    #if self.has_key(weekdaykey):
-      time_range_list = dict.__getitem__(self, weekdaykey)
+    if self.has_key(weekdaykey):
+      time_range_list = self[weekdaykey]
       time_range_list.append(time_range)
       #print 'time_range_list', time_range_list 
     else:
-      time_range_list = []
-      time_range_list.append(time_range)
-      time_range_list = dict.__setitem__(self, weekdaykey, time_range_list)
-      #self[weekdaykey] = time_range_list 
+      time_range_list = [time_range]
+      super(TimeTableDict, self).__setitem__(weekdaykey, time_range_list)
       #print 'time_range_list', time_range_list 
     self.update_weekday_time_labels_dict()
 
   def update_weekday_time_labels_dict(self):
-    weekdays = dict.keys(self)
-    for weekday in weekdays: 
-      time_ranges = dict.__getitem__(self, weekday)
+    for weekday in self.keys(): 
+      time_ranges = self[weekday]
       time_labels = timeutils.get_time_labels_from_time_ranges(time_ranges)
       self.weekday_time_labels_dict[weekday] = time_labels 
+
+  def set_weekday_timetable_by_labels(self, weekday, time_label_start, time_label_finish):
+    contiguous_time_labels = time_label_start, time_label_finish
+    time_range = timeutils.convert_contiguous_time_labels_to_a_time_start_and_finish_tuple(contiguous_time_labels)
+    self[weekday] = time_range
+
+  def remove_weekday_timetable_by_labels(self, weekday, time_label_start, time_label_finish):
+    contiguous_time_labels = time_label_start, time_label_finish
+    p_time_range = timeutils.convert_contiguous_time_labels_to_a_time_start_and_finish_tuple(contiguous_time_labels)
+    time_range = self[weekday]
+    if time_range[0] <= p_time_range[0] <= time_range[1]:
+      pass
+    
+    
+
 
   def get_time_labels_for_weekday(self, weekday):
     if self.weekday_time_labels_dict.has_key(weekday):
       return self.weekday_time_labels_dict[weekday]
     return []
   
-  def get_time_labels_for_weekday_old(self, weekdaykey):
-    if not dict.has_key(self, weekdaykey):
-      return None
-    time_range_list = dict.__getitem__(self, weekdaykey)
-    time_labels = timeutils.convert_time_ranges_to_time_labels(time_range_list)
-    return time_labels 
-    
-  #def get_time_ranges_by_weekday(self, weekday):
-    #return self[weekday]
-    
   def list_all_times_by_weekdaystr_and_time_labels(self):
     weekdays = self.keys()
     weekdays.sort()
@@ -150,26 +152,28 @@ def create_table1():
   table = TimeTableDict()
   time_start = time(hour=7,minute=30)
   time_finish = time(hour=9,minute=10)
-  table[0] = (time_start, time_finish)
+  table[timeutils.wd.MONDAY] = (time_start, time_finish)
   time_start = time(hour=18,minute=30)
   time_finish = time(hour=19,minute=20)
-  table[2] = (time_start, time_finish)
+  table[timeutils.wd.WEDNESDAY] = (time_start, time_finish)
   return table
       
 def create_table2():
   table = TimeTableDict()
   time_start = time(hour=7,minute=30)
   time_finish = time(hour=9,minute=10)
-  table[0] = (time_start, time_finish)
+  table[timeutils.wd.MONDAY] = (time_start, time_finish)
   time_start = time(hour=18,minute=30)
   time_finish = time(hour=19,minute=20)
-  table[2] = (time_start, time_finish)
+  table[timeutils.wd.WEDNESDAY] = (time_start, time_finish)
   return table
     
 def test1():
   table1 = create_table1()    
+  print 'Table 1:'
   print table1    
   table2 = create_table2()
+  print 'Table 2:'
   print table2
   
   print 'Test 1 :: Comparing of equility:  table1 == table2' 
@@ -178,6 +182,8 @@ def test1():
   time_start = time(hour=18,minute=0)
   time_finish = time(hour=19,minute=40)
   table2[5] = (time_start, time_finish)
+  print 'Table 2 (changed):'
+  print table2
   
   print 'Test 1 :: Comparing of equility:  table1 == table2' 
   print 'Result =', table1 == table2     
@@ -188,3 +194,27 @@ def process():
         
 if __name__ == '__main__':
   process()
+
+import unittest
+
+class TestCase(unittest.TestCase):
+
+  def setUp(self):
+    self.table1 = None
+    self.table2 = None
+    self.make_table1()
+
+  def make_table1(self):
+    self.table1 = TimeTableDict()
+    self.table1.set_weekday_timetable_by_labels(K.MONDAY, K.M1, K.M2)
+    self.table1.set_weekday_timetable_by_labels(K.MONDAY, K.N1, K.N2)
+    # self.table1.remove_weekday_timetable_by_labels(K.MONDAY, K.N1, K.N2)
+
+  def test1_equal_tables(self):
+    table_copied = self.table1.copy()
+    self.assertEqual(self.table1, table_copied)
+    time_start_T1  = time(hour=12,minute=0)
+    time_finish_T1 = time(hour=12,minute=50)
+    table_copied[timeutils.K.MONDAY] = (time_start_T1, time_finish_T1)
+    self.assertNotEqual(self.table1, table_copied)
+
