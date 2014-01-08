@@ -6,7 +6,7 @@
 '''
 
 from datetime import time # date #, timedelta
-import os
+import os, sys
 
 import __init__
 #import local_settings as ls
@@ -17,7 +17,7 @@ class TimeRangesWithinAWeekday(list):
   '''
   This class (TimeRangesWithinAWeekday) extends from list
   Its main purpose is to post-process the list of time ranges so that if ranges overlap, they become unified
-  The class also breaks ranges apart if some part of it is removed
+  The class also breaks ranges apart if some inner part of it is removed
   
   The 2 examples below illustrate the 2 cases, ie:
     1) the summation with possible contiguealization
@@ -44,7 +44,12 @@ class TimeRangesWithinAWeekday(list):
   Because of this removal, the list gets uncontiguealized, ie, the resulting list becomes: 
     [(M1,M2), (M5,T1)] 
 
-  Notice that the one range (M1,T1) subtracted of (M3,M4) get broken into two ranges, ie, (M1,M2) and (M5,T1)
+  Notice that the one range (M1,T1) subtracted of (M3,M4) got broken into two ranges, ie, (M1,M2) and (M5,T1)
+  
+  In a nutshell:
+    [(M1,M2), (M3,M4), (T1,T3)] =reduces_to=> [(M1,M4), (T1,T3)]
+    [(M1,T1)] - [(M3,T4)] =reduces_to=> [(M1,M2), (M5,T1)]
+  
 
   '''
   
@@ -70,24 +75,112 @@ class TimeRangesWithinAWeekday(list):
     super(TimeRangesWithinAWeekday, self).__add__(time_range_list)
     self.contiguealize_it()
     
-  def contiguealize_it(self):
+  def contiguealize_it(self, index=0):
+    if index >= len(self) - 1:
+      return
+    front_time_range   = self[index]
+    next_time_range    = self[index+1]
+    front_ending_at    = front_time_range[1]
+    next_beginning_at  = next_time_range[0]
+    less_equal_greater = timeutils.compare_2_time_labels_less_equal_greater(front_ending_at, next_beginning_at)
+    if less_equal_greater == timeutils.LABEL_SMALLER:
+      return self.contiguealize_it(index+1)
+    # Swap
+    front_beginning_at  = front_time_range[0]
+    next_ending_at      = next_time_range[1]
+    self[index+1] = (front_beginning_at, next_ending_at)
+    del self[index]
+    return self.contiguealize_it(index+1)
+      
     pass
 
-  def remove_range(self, time_range):
-    pass
+  def remove_range(self, time_range_to_remove, index=0):
+
+    if index > len(self) - 1:
+      return self.contiguealize_it()
+
+    time_range = self[index]
+    time_beginning_at = time_range[0] 
+    time_ending_at    = time_range[1]
+    time_range_to_remove_ini = time_range_to_remove[0]
+    time_range_to_remove_fim = time_range_to_remove[1]
+
+    less_equal_greater = timeutils.compare_2_time_labels_less_equal_greater(time_range_to_remove_fim, time_beginning_at)
+    if less_equal_greater == timeutils.LABEL_SMALLER:
+      # nothing to do at the recursion trip and no further recursions needed, ie, the removal is outside list!
+      return self.contiguealize_it()
+
+    less_equal_greater = timeutils.compare_2_time_labels_less_equal_greater(time_ending_at, time_range_to_remove_ini)
+    if less_equal_greater == timeutils.LABEL_SMALLER:
+      # nothing to do at this recursion trip!  Recursion on to the next time range
+      return self.remove_range(time_range_to_remove, index+1)
+    
+    if less_equal_greater == timeutils.LABEL_EQUAL:
+      time_ending_at = timeutils.minus_one(time_ending_at)
+      if time_ending_at == None:
+        del self[index]
+        return self.remove_range(time_range_to_remove, index)
+
+      less_equal_greater = timeutils.compare_2_time_labels_less_equal_greater(time_ending_at, time_beginning_at)
+      if less_equal_greater == timeutils.LABEL_SMALLER:
+        del self[index]
+        return self.remove_range(time_range_to_remove, index)
+
+      time_range = (time_beginning_at, time_ending_at)
+
+      time_range_to_remove_ini = timeutils.plus_one(time_range_to_remove_ini)
+      if time_range_to_remove_ini == None:
+        return self.contiguealize_it()
+
+      less_equal_greater = timeutils.compare_2_time_labels_less_equal_greater(time_range_to_remove_ini, time_range_to_remove_fim)
+      if less_equal_greater == timeutils.LABEL_GREATER:
+        # finish
+        return self.contiguealize_it()
+
+      return self.remove_range(time_range_to_remove, index+1)
+        
+
+    # less_equal_greater = timeutils.compare_2_time_labels_less_equal_greater(time_ending_at, time_range_to_remove_ini)
+    # if less_equal_greater == timeutils.LABEL_GREATER:
+    less_equal_greater = timeutils.compare_2_time_labels_less_equal_greater(time_range_to_remove_ini, time_beginning_at)
+    if less_equal_greater == timeutils.LABEL_EQUAL or less_equal_greater == timeutils.LABEL_SMALLER:
+      del self[index]
+      return self.remove_range(time_range_to_remove, index)
+      
+    #if less_equal_greater == timeutils.LABEL_GREATER:
+    time_ending_at_kept = time_ending_at 
+    time_ending_at = timeutils.minus_one(time_range_to_remove_ini)
+    if time_ending_at == None:
+      del self[index]
+      return self.remove_range(time_range_to_remove, index)
+    less_equal_greater = timeutils.compare_2_time_labels_less_equal_greater(time_ending_at, time_beginning_at)
+    if less_equal_greater == timeutils.LABEL_SMALLER:
+      del self[index]
+      return self.remove_range(time_range_to_remove, index)
+    
+    time_range = (time_beginning_at, time_ending_at)
+    time_ending_at = timeutils.minus_one(time_range_to_remove_ini)
+    if time_ending_at == None:
+      del self[index]
+      return self.remove_range(time_range_to_remove, index)
+    
+    time_range_to_remove_ini = timeutils.plus_one(time_ending_at_kept)
+    if time_range_to_remove_ini == None:
+      return self.contiguealize_it()    
+    less_equal_greater = timeutils.compare_2_time_labels_less_equal_greater(time_range_to_remove_ini, time_range_to_remove_fim)
+    if less_equal_greater == timeutils.LABEL_GREATER:
+      return self.contiguealize_it()    
+    return self.remove_range(time_range_to_remove, index+1)
+    
+    
 
   def remove(self, time_range):
     '''
     This method is overridden here from parent "list"
     '''
-    return self.remove_range(time_range)
+    super(TimeRangesWithinAWeekday, self).remove(time_range)
+    return self.contiguealize_it()
 
-
-def process():
-  pass  
-        
-if __name__ == '__main__':
-  process()
 
 import unittest
 
@@ -103,9 +196,9 @@ class TestCase(unittest.TestCase):
 
   def test1_verify_contiguealization(self):
     weekday_time_ranges = TimeRangesWithinAWeekday()
-    weekday_time_ranges.append(K.M1, K.M2)    
-    weekday_time_ranges.append(K.M3, K.M4)
-    weekday_time_ranges_already_given_contiguous = TimeRangesWithinAWeekday((K.M3, K.M4))
+    weekday_time_ranges.append((K.M1, K.M2))    
+    weekday_time_ranges.append((K.M3, K.M4))
+    weekday_time_ranges_already_given_contiguous = TimeRangesWithinAWeekday((K.M1, K.M4))
     self.assertEqual(weekday_time_ranges, weekday_time_ranges_already_given_contiguous)
 
   def test1_verify_removal_and_breaking_of_contiguealization(self):
@@ -116,3 +209,18 @@ class TestCase(unittest.TestCase):
     weekday_time_ranges_already_given_uncontiguous.append((K.M1, K.M2))
     weekday_time_ranges_already_given_uncontiguous.append((K.M5, K.T1))
     self.assertEqual(weekday_time_ranges, weekday_time_ranges_already_given_uncontiguous)
+
+
+def unittests():
+  unittest.main()
+
+def process():
+  '''
+  '''
+  pass
+
+if __name__ == '__main__':
+  if 'ut' in sys.argv:
+    sys.argv.remove('ut')
+    unittests()  
+  process()

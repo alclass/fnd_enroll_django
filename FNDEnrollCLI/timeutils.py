@@ -61,6 +61,41 @@ def put_time_labels_in_order(p_time_labels):
   p_labels_noite.sort()
   return p_labels_manha_and_tarde + p_labels_noite 
 
+LABEL_SMALLER = -1
+LABEL_EQUAL   =  0
+LABEL_GREATER =  1
+def compare_2_time_labels_less_equal_greater(label1, label2):
+  if label1 not in labels_contiguity:
+    return None 
+  if label2 not in labels_contiguity:
+    return None 
+  index1 = labels_contiguity.index(label1)
+  index2 = labels_contiguity.index(label2)
+  if index1 < index2:
+    return LABEL_SMALLER
+  if index1 == index2:
+    return LABEL_EQUAL
+  return LABEL_GREATER
+  
+def minus_one(time_label):
+  if time_label not in labels_contiguity:
+    return None
+  index = labels_contiguity.index(time_label)
+  if index == 0:
+    return None
+  return labels_contiguity[index-1]
+    
+def plus_one(time_label):
+  if time_label not in labels_contiguity:
+    return None
+  index = labels_contiguity.index(time_label)
+  if index == len(labels_contiguity) - 1:
+    return None
+  return labels_contiguity[index+1]
+
+   
+  
+  
 
 class K:
   MONDAY    = 0
