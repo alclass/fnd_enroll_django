@@ -229,6 +229,16 @@ def convert_time_labels_to_time_ranges(time_labels):
       continue
   return time_ranges
 
+def convert_time_range_labels_to_indices(time_range_labels):
+  ini_label, fim_label = time_range_labels
+  ini_index = labels_contiguity.index(ini_label)
+  fim_index = labels_contiguity.index(fim_label)
+  return (ini_index, fim_index) 
+
+def convert_indices_to_time_range_labels(time_range_indices):
+  time_range_by_labels = labels_contiguity[time_range_indices[0]], labels_contiguity[time_range_indices[1]]
+  return time_range_by_labels
+
 def convert_time_ranges_to_time_labels(time_ranges):
   time_labels = []
   all_time_ranges = map_labels_to_time_start_and_finish.items()

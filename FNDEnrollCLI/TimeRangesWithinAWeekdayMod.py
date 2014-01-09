@@ -12,6 +12,8 @@ import __init__
 #import local_settings as ls
 import timeutils
 from timeutils import K
+from IniFimPairsMod import IniFimPairs
+
 
 class TimeRangesWithinAWeekday(list):
   '''
@@ -95,84 +97,18 @@ class TimeRangesWithinAWeekday(list):
     pass
 
   def remove_range(self, time_range_to_remove, index=0):
-
-    if index > len(self) - 1:
-      return self.contiguealize_it()
-
-    time_range = self[index]
-    time_beginning_at = time_range[0] 
-    time_ending_at    = time_range[1]
-    time_range_to_remove_ini = time_range_to_remove[0]
-    time_range_to_remove_fim = time_range_to_remove[1]
-
-    less_equal_greater = timeutils.compare_2_time_labels_less_equal_greater(time_range_to_remove_fim, time_beginning_at)
-    if less_equal_greater == timeutils.LABEL_SMALLER:
-      # nothing to do at the recursion trip and no further recursions needed, ie, the removal is outside list!
-      return self.contiguealize_it()
-
-    less_equal_greater = timeutils.compare_2_time_labels_less_equal_greater(time_ending_at, time_range_to_remove_ini)
-    if less_equal_greater == timeutils.LABEL_SMALLER:
-      # nothing to do at this recursion trip!  Recursion on to the next time range
-      return self.remove_range(time_range_to_remove, index+1)
     
-    if less_equal_greater == timeutils.LABEL_EQUAL:
-      time_ending_at = timeutils.minus_one(time_ending_at)
-      if time_ending_at == None:
-        del self[index]
-        return self.remove_range(time_range_to_remove, index)
-
-      less_equal_greater = timeutils.compare_2_time_labels_less_equal_greater(time_ending_at, time_beginning_at)
-      if less_equal_greater == timeutils.LABEL_SMALLER:
-        del self[index]
-        return self.remove_range(time_range_to_remove, index)
-
-      time_range = (time_beginning_at, time_ending_at)
-
-      time_range_to_remove_ini = timeutils.plus_one(time_range_to_remove_ini)
-      if time_range_to_remove_ini == None:
-        return self.contiguealize_it()
-
-      less_equal_greater = timeutils.compare_2_time_labels_less_equal_greater(time_range_to_remove_ini, time_range_to_remove_fim)
-      if less_equal_greater == timeutils.LABEL_GREATER:
-        # finish
-        return self.contiguealize_it()
-
-      return self.remove_range(time_range_to_remove, index+1)
-        
-
-    # less_equal_greater = timeutils.compare_2_time_labels_less_equal_greater(time_ending_at, time_range_to_remove_ini)
-    # if less_equal_greater == timeutils.LABEL_GREATER:
-    less_equal_greater = timeutils.compare_2_time_labels_less_equal_greater(time_range_to_remove_ini, time_beginning_at)
-    if less_equal_greater == timeutils.LABEL_EQUAL or less_equal_greater == timeutils.LABEL_SMALLER:
-      del self[index]
-      return self.remove_range(time_range_to_remove, index)
-      
-    #if less_equal_greater == timeutils.LABEL_GREATER:
-    time_ending_at_kept = time_ending_at 
-    time_ending_at = timeutils.minus_one(time_range_to_remove_ini)
-    if time_ending_at == None:
-      del self[index]
-      return self.remove_range(time_range_to_remove, index)
-    less_equal_greater = timeutils.compare_2_time_labels_less_equal_greater(time_ending_at, time_beginning_at)
-    if less_equal_greater == timeutils.LABEL_SMALLER:
-      del self[index]
-      return self.remove_range(time_range_to_remove, index)
+    ini_fim_pairs = IniFimPairs(len(timeutils.labels_contiguity))
+    for time_range_labels in self:
+      ini_fim_int_indices = timeutils.convert_time_range_labels_to_indices(time_range_labels)
+      ini_fim_pairs.append(ini_fim_int_indices)
+    time_range_to_remove_indices = timeutils.convert_time_range_labels_to_indices(time_range_to_remove)
+    ini_fim_pairs.remove_range(time_range_to_remove_indices)
     
-    time_range = (time_beginning_at, time_ending_at)
-    time_ending_at = timeutils.minus_one(time_range_to_remove_ini)
-    if time_ending_at == None:
-      del self[index]
-      return self.remove_range(time_range_to_remove, index)
-    
-    time_range_to_remove_ini = timeutils.plus_one(time_ending_at_kept)
-    if time_range_to_remove_ini == None:
-      return self.contiguealize_it()    
-    less_equal_greater = timeutils.compare_2_time_labels_less_equal_greater(time_range_to_remove_ini, time_range_to_remove_fim)
-    if less_equal_greater == timeutils.LABEL_GREATER:
-      return self.contiguealize_it()    
-    return self.remove_range(time_range_to_remove, index+1)
-    
-    
+    super(TimeRangesWithinAWeekday, self).__init__()
+    for ini_fim_tuple in ini_fim_pairs:
+      time_range_by_labels = timeutils.convert_indices_to_time_range_labels(ini_fim_tuple)
+      self.append(time_range_by_labels)
 
   def remove(self, time_range):
     '''
