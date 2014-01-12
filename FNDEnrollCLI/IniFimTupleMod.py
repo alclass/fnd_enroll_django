@@ -5,9 +5,29 @@
 '''
 #import codecs
 import os, sys
+import timeutils
+from timeutils import K
 
 class IniFimTuple(tuple):
   
+  @staticmethod
+  def generate_instance_from_labels(ini_time_label, fim_time_label):
+    ini_index = -1; fim_index = -1
+    if ini_time_label in timeutils.labels_contiguity:
+      ini_index = timeutils.labels_contiguity.index(ini_time_label)
+    if fim_time_label in timeutils.labels_contiguity:
+      fim_index = timeutils.labels_contiguity.index(fim_time_label)
+    if ini_index == -1 or fim_index == -1:
+      return None
+    if ini_index > fim_index:
+      return None
+    return IniFimTuple((ini_index, fim_index))
+
+  @staticmethod
+  def generate_instance_from_start_and_finish_times(ini_pytime, fim_pytime):
+    ini_index, fim_index = K.get_indices_time_range_from_pytime_range(ini_pytime, fim_pytime)
+    return IniFimTuple((ini_index, fim_index)) 
+
   def __init__(self, tuple_pair):
     if tuple_pair == None:
       raise ValueError, 'IniFimTuple(tuple) cannot be initialized with None.'
@@ -27,6 +47,31 @@ class IniFimTuple(tuple):
     if index_ini > index_fim:
       raise IndexError, 'index_ini (%d) > index_fim (%d)' %(index_ini, index_fim) 
     return index_ini, index_fim
+
+  def is_label_time_within(self, p_label_time):
+    p_label_time = p_label_time.upper()
+    ini_fim_labels = self.as_labels()
+    if p_label_time in ini_fim_labels:
+      return True
+    return False 
+
+  def as_hours(self):
+    '''
+    hours is different from labels because a unique label has two time data (ini and fim)
+    because of that, as_hours() returns a list, and as_labels returns a 2-D tuple 
+    '''
+    return timeutils.convert_time_indices_to_time_ranges(self)
+
+  def as_labels(self):
+    '''
+    '''
+    return K.get_label_time_range_from_indices_range(self[0], self[1])
+
+  def as_str_hour_min_time_range(self):
+    ini_label, fim_label = self.as_labels()
+    ini_str_time = timeutils.map_labels_to_time_start_and_finish_strs[ini_label][0]
+    fim_str_time = timeutils.map_labels_to_time_start_and_finish_strs[fim_label][1]
+    return ini_str_time, fim_str_time 
   
   #=============================================================================
   # It's having problems with unittest.assertEqual(), so we solved this using two conditions, for the two coords: s[0]==p[0] and s[1]==p[1] 
@@ -329,6 +374,11 @@ class TestCaseIniFimTuple(unittest.TestCase):
     diff_should_be = [IniFimTuple((4,4)), IniFimTuple((80,80))]
     self.assertEqual(diff_from_method, diff_should_be)
 
+  def test9_as_str_time(self):
+    inifim = IniFimTuple((0,1))
+    returned_str_time_range = inifim.as_str_hour_min_time_range()
+    expected_str_time_range = ('07:30','09:10')
+    self.assertEqual(returned_str_time_range, expected_str_time_range)
 
 def unittests():
   unittest.main()
@@ -347,6 +397,7 @@ def test6_nonunittest():
   diff_should_be = [IniFimTuple((4,49)), IniFimTuple((74,80))]
   print 'diff_from_method', diff_from_method
   print 'diff_should_be', diff_should_be
+  
   
   
 

@@ -5,62 +5,46 @@ Created on 4 août 2013
 
 @author: friend
 '''
-
+import sys
 import xml.etree.ElementTree as ET
 
 import codecs
 import os
 import timeutils
 from DisciplineMod import Discipline
-
+from TurmaMod import Turma
+from TimeTableDictMod import TimeTableDict
+#from fndutils import *
+from IniFimTupleMod import IniFimTuple
 import __init__
 import local_settings as ls
 
-def clean_name_finishing_the_ending(name):
-  new_name = name
-  if new_name.find('Tarde') > -1:
-    new_name = new_name.replace('Tarde','')
-  if new_name.find('Manhã') > -1:
-    new_name = new_name.replace('Manhã','')
-  if new_name.find('Noite') > -1:
-    new_name = new_name.replace('Manhã','')
-  new_name = new_name.rstrip('- ')
-  return new_name
-
-def reset_derived_name_if_equal_beginning_str(derived_name, name):
-  index = len(derived_name)
-  for i in xrange(len(derived_name)):
-    if i > len(name) - 1:
-      index = i
-      break 
-    if derived_name[i] != name[i]:
-      index = i
-      break
-  new_derived_name = derived_name[:index]
-  return new_derived_name 
-
-def derive_name_from_names(names):
-  if names == None or len(names) == 0:
-    return None
-  derived_name = names[0]
-  for name in names[1:]:
-    derived_name = reset_derived_name_if_equal_beginning_str(derived_name, name)
-  return derived_name 
-    
-
 class Disciplines(object):
+  '''
+  '''
 
   def __init__(self):
-    self.read_disciplines_from_xml_has_run = False
     self.xml_tree = None
+    self.read_disciplines_from_xml_has_run = False
   
   def get_all_disciplines(self):
+    '''
+    This method obtains all disciplines from class Discipline's static method get_all_stored_disciplines() 
+    '''
     if self.read_disciplines_from_xml_has_run:
       return Discipline.get_all_stored_disciplines()
     self.read_disciplines_from_xml()
     return Discipline.get_all_stored_disciplines()
     
   def read_disciplines_from_xml(self):
+    '''
+    Important: 
+      The disciplines dict (with code as key and discipline as value) is not an attribute of this class.
+      It is, rather, a static attribute of class Discipline.
+      Because of that, we don't see self.disciplines here, instead, 
+      method self.get_all_disciplines() is the one to obtain all disciplines read.
+      (It obtains them indirectly from class Discipline's static method get_all_stored_disciplines() 
+    '''
     xml_file = ls.get_default_oferecidas_xml_file_abspath()
     self.xml_tree = ET.parse(xml_file)
     root = self.xml_tree.getroot()
@@ -68,6 +52,8 @@ class Disciplines(object):
       code = discipline_tag.get('code')
       discipline = Discipline.get_discipline_from_store_or_create_and_store_it(code)
       discipline_name_tag = discipline_tag.find('name')
+      if discipline_name_tag == None:
+        continue 
       discipline.name = discipline_name_tag.text
       discipline_is_elective_tag = discipline_tag.find('is_elective')
       discipline.is_elective = False 
@@ -76,10 +62,11 @@ class Disciplines(object):
       turmas_tag = discipline_tag.iter('turma')
       for turma_tag in turmas_tag:
         turma_code = turma_tag.get('code')
-        discipline.add_new_turma(turma_code)
-        turma = discipline.get_current_turma()
+        turma = Turma(turma_code)
+        discipline.add_turma(turma)
+        #turma = discipline.get_current_turma()
         turma_name_tag = turma_tag.find('name')
-        turma.name = turma_name_tag.text  
+        turma.number_or_letter = turma_name_tag.text  
         instructor_tag = turma_tag.find('instructor')
         instructor = instructor_tag.text
         turma.instructor = instructor
@@ -92,12 +79,17 @@ class Disciplines(object):
           time_finish_tag = time_session_tag.find('time_finish')
           time_finish_str = time_finish_tag.text
           time_finish = timeutils.get_time_from_str_time(time_finish_str)
-          turma.timetable[weekday] = (time_start, time_finish)
+          if time_start==None or time_finish==None:
+            raise ValueError, 'Dates are missing. In reading %s : time_start=%s and time_finish=%s' %(xml_file, str(time_start), str(time_finish))
+          turma.timetable[weekday] = IniFimTuple.generate_instance_from_start_and_finish_times(time_start, time_finish)
       # self.disciplines.append(discipline) # no longer necessary, it's stored in the static dict in class Discipline
     
     self.read_disciplines_from_xml_has_run = True
             
   def find_by_weekday(self, weekday):
+    '''
+    This method searches for turmas on a certain weekday
+    '''
     turma_found_list = []
     disciplines = self.get_all_disciplines()
     for discipline in disciplines:
@@ -109,12 +101,16 @@ class Disciplines(object):
   def find_by_timetable(self, p_ref_timetable):
     '''
     timetable, though also a dict, is a 2D data per element
-    ie, it contains weekdays (each one is 0 to 6) and for each weekday an array of time ranges (each time range is a from/to time tuple)
+    ie, it contains weekdays (each one is 0 to 6) and for each weekday
+      an array (list) of IniFimTuple's (time ranges).
+      (Each IniFimTuple is a from/to time-indices. E.g. (0,1) means times (M1,M2).)
     
-    To search by timetable is to look all turmas and see which ones coincide 
+    To search by timetable is to look all turmas and see which ones coincide with a certain timetable  
     '''
+    if type(p_ref_timetable) != TimeTableDict:
+      raise TypeError, 'type(p_ref_timetable)=%s != TimeTableDict in method find_by_timetable()' %(str(type(p_ref_timetable))) 
     turma_found_list = []
-    disciplines = self.get_all_scraped_disciplines()
+    disciplines = self.get_all_disciplines()
     if disciplines is None:
       return []
     for discipline in disciplines:
@@ -188,7 +184,7 @@ class Disciplines(object):
     
   def write_xml_disciplines_names(self):
     root = ET.Element("disciplines_names")
-    for i, discipline in enumerate(self.disciplines):
+    for i, discipline in enumerate(self.get_all_disciplines()):
       print i+1, discipline.code, discipline.name
       discipline_tag = ET.SubElement(root, 'discipline', attrib={'code':discipline.code} )
       discipline_tag.text = discipline.name
@@ -198,17 +194,37 @@ class Disciplines(object):
     tree.write(xml_abspath)
      
   def size(self):
-    return len(self.disciplines)
+    return len(self.get_all_disciplines())
+
+
+import unittest
+class TestCase1(unittest.TestCase):
+
+  def setUp(self):
+    pass
+
+  def test1_(self):
+    pass
+
+
+def unittests():
+  unittest.main()
 
 def process():
   disciplines = Disciplines()
-  #print 'Reading disciplines from XML'
-  #disciplines.read_disciplines_from_xml()
-  #print 'There are %s disciplines' %disciplines.size()
-  #disciplines.derive_discipline_name_by_turmas()
-  #disciplines.write_text_disciplines_names()
-  #disciplines.write_xml_disciplines_names()
+  print 'Reading disciplines from XML'
+  disciplines.read_disciplines_from_xml()
+  print 'There are %s disciplines' %disciplines.size()
+  disciplines.derive_discipline_name_by_turmas()
+  disciplines.write_text_disciplines_names()
+  disciplines.write_xml_disciplines_names()
   disciplines.read_text_file_and_set_discipline_names()
+        
+if __name__ == '__main__':
+  if 'ut' in sys.argv:
+    sys.argv.remove('ut')
+    unittests()  
+  process()
         
 if __name__ == '__main__':
   process()

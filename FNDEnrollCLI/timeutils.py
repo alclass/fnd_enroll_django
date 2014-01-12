@@ -7,7 +7,7 @@ timeutils.py
 
 
 from datetime import time
-import datetime
+import datetime, sys
 
 map_labels_to_time_start_and_finish_strs = {
   'M1':(u'7:30', u'8:20'),
@@ -21,7 +21,7 @@ map_labels_to_time_start_and_finish_strs = {
   'T4':(u'14:50', u'15:40'),
   'T5':(u'15:40', u'16:30'),
   'T6':(u'16:40', u'17:30'),
-  'T7':(u'17:30', u'18:20'),
+  'T7':(u'17:40', u'18:20'),
   'N1':(u'18:30', u'19:20'),
   'N2':(u'19:20', u'20:10'),
   'N3':(u'20:10', u'21:00'),
@@ -30,7 +30,7 @@ map_labels_to_time_start_and_finish_strs = {
 }  
 
 map_labels_to_time_start_and_finish = {}
-def form_map_labels_to_time_start_and_finish():
+def form_map_labels_to_pytime_start_and_finish():
   for label in map_labels_to_time_start_and_finish_strs.keys():
     # tuple_start_and_finish_strs
     time_start_str = map_labels_to_time_start_and_finish_strs[label][0]
@@ -39,10 +39,12 @@ def form_map_labels_to_time_start_and_finish():
     str_hour_finish, str_minute_finish = time_finish_str.split(':')
     time_range = time(hour=int(str_hour_start), minute=int(str_minute_start)), time(hour=int(str_hour_finish), minute=int(str_minute_finish))  
     map_labels_to_time_start_and_finish[label] = time_range
-form_map_labels_to_time_start_and_finish()
+form_map_labels_to_pytime_start_and_finish()
 
 dict_pt_3_letter_weekday = {0:'Seg',1:'Ter',2:'Qua',3:'Qui',4:'Sex', 5:'Sab',6:'Dom'}
 labels_contiguity = ['M1','M2','M3','M4','M5','T1','T2','T3','T4','T5','T6','T7','N1','N2','N3','N4','N5']
+def get_n_of_times_per_day():
+  return len(labels_contiguity)
 def put_time_labels_in_order(p_time_labels):
   '''
   Because N is before T alphabetically, the sorting process is done 2-stepfully
@@ -93,9 +95,6 @@ def plus_one(time_label):
     return None
   return labels_contiguity[index+1]
 
-   
-  
-  
 
 class K:
   MONDAY    = 0
@@ -115,7 +114,7 @@ class K:
       raise ValueError, 'time_label (=%s) not in labels_contiguity (=%s)' %(time_label, str(labels_contiguity))
 
   @staticmethod
-  def get_time_range_from_time_labels(label_start, label_finish):
+  def get_pytime_range_from_time_labels(label_start, label_finish):
     K.validate_label_or_raise(label_start)
     K.validate_label_or_raise(label_finish)
     p_time_labels = label_start, label_finish
@@ -124,6 +123,29 @@ class K:
     time_range_finish = map_labels_to_time_start_and_finish[p_time_labels[1]]
     return time_range_start, time_range_finish 
 
+  @staticmethod
+  def get_label_time_range_from_pytime_range(ini_pytime, fim_pytime):
+    pytime_range = ini_pytime, fim_pytime
+    return convert_pytime_range_to_label_time_range(pytime_range)
+
+  @staticmethod
+  def get_indices_time_range_from_pytime_range(ini_pytime, fim_pytime):
+    ini_label_time, fim_label_time = K.get_label_time_range_from_pytime_range(ini_pytime, fim_pytime)
+    if ini_label_time == None or ini_label_time == None:
+      return None, None
+    try:
+      ini_index = labels_contiguity.index(ini_label_time)
+      fim_index = labels_contiguity.index(fim_label_time)
+      return ini_index, fim_index
+    except IndexError:
+      pass
+    return None, None
+
+  @staticmethod
+  def get_label_time_range_from_indices_range(ini_index, fim_index):
+    ini_label = labels_contiguity[ini_index]
+    fim_label = labels_contiguity[fim_index]
+    return ini_label, fim_label
 
 def is_time_range_a_tuple_of_times(time_range):
   if type(time_range) != tuple:
@@ -162,6 +184,8 @@ def get_weekday_from_weekday3l(weekday3l):
   return None
 
 def get_time_from_str_time(str_time):
+  if str_time == None:
+    return None
   dtime = None
   try:
     pp = str_time.split(':')
@@ -170,14 +194,14 @@ def get_time_from_str_time(str_time):
     if len(pp) > 2:
       second = int(pp[2])
       dtime = time(hour=hour, minute=minute, second=second)
-      return dtime
-    dtime = time(hour=hour, minute=minute)
+    else:
+      dtime = time(hour=hour, minute=minute)
     return dtime
   except IndexError:
     pass
   except ValueError:
     pass
-  return dtime
+  return None
 
 def get_time_labels_from_time_ranges(time_ranges):
   time_labels = []
@@ -218,6 +242,48 @@ def convert_contiguous_time_labels_to_a_time_start_and_finish_tuple(contiguous_t
       continue
   return (resulting_time_start, resulting_time_finish) 
 
+
+def convert_label_time_range_to_pytime_range(label_time_range):
+  '''
+  Example: 
+    label_time_range = (M1, M2)    
+  returns:
+    pytime_range = time(hours=7, minutes=30), time(hours=9, minutes=10)
+  '''
+  try:
+    ini_label_time = label_time_range[0]
+    fim_label_time = label_time_range[1]
+    ini_pytime = map_labels_to_time_start_and_finish[ini_label_time][0]
+    fim_pytime = map_labels_to_time_start_and_finish[fim_label_time][1]
+    return ini_pytime, fim_pytime
+  except IndexError:
+    pass
+  return None
+
+def convert_pytime_range_to_label_time_range(pytime_range):
+  '''
+  Example: 
+    label_time_range = (M1, M2)
+  returns:
+    pytime_range = time(hours=7, minutes=30), time(hours=9, minutes=10)
+  '''
+  try:
+    ini_pytime = pytime_range[0]
+    fim_pytime = pytime_range[1]
+    ini_label_time = None
+    fim_label_time = None
+    for label in map_labels_to_time_start_and_finish:
+      if ini_pytime == map_labels_to_time_start_and_finish[label][0]:
+        ini_label_time = label
+      if fim_pytime == map_labels_to_time_start_and_finish[label][1]:
+        fim_label_time = label
+      if ini_label_time != None and fim_label_time != None:
+        return ini_label_time, fim_label_time
+  except IndexError:
+    pass
+  return ini_label_time, fim_label_time
+
+
 def convert_time_labels_to_time_ranges(time_labels):
   time_ranges = []
   for time_label in time_labels:
@@ -228,6 +294,9 @@ def convert_time_labels_to_time_ranges(time_labels):
     except KeyError:
       continue
   return time_ranges
+
+def convert_time_indices_to_time_ranges(time_range_indices):
+  return convert_time_labels_to_time_ranges(convert_indices_to_time_range_labels(time_range_indices))
 
 def convert_time_range_labels_to_indices(time_range_labels):
   ini_label, fim_label = time_range_labels
@@ -298,13 +367,6 @@ def test2():
   print convert_time_ranges_to_time_labels(time_ranges)
   
   
-def process():
-  #test1()
-  test2()
-  #print_map_labels_to_time_start_and_finish()  
-        
-
-
 import unittest
 
 class TestCase(unittest.TestCase):
@@ -322,7 +384,40 @@ class TestCase(unittest.TestCase):
     self.assertEqual(type(time_finish), time)
 
 
+  def test_convert_time_labels_to_time_ranges(self):
+    label_time_range = (K.M1, K.M2)
+    returned_pytime_range = convert_label_time_range_to_pytime_range(label_time_range)
+    expected_time_start = time(hour=7, minute=30)
+    expected_time_finish = time(hour=9, minute=10)
+    expected_time_range = expected_time_start, expected_time_finish
+    self.assertEqual(returned_pytime_range, expected_time_range)
+
+  def test_convert_pytime_range_to_a_label_time_range(self):
+    ini_pytime  = time(hour=7, minute=30)
+    fim_pytime = time(hour=9, minute=10)
+    returned_label_time_range = K.get_label_time_range_from_pytime_range(ini_pytime, fim_pytime) 
+    expected_label_time_range = (K.M1, K.M2)
+    self.assertEqual(returned_label_time_range, expected_label_time_range)
+
+  def test_get_indices_time_range_from_pytime_range(self):
+    ini_pytime  = time(hour=7, minute=30)
+    fim_pytime = time(hour=9, minute=10)
+    returned_indices_range = K.get_indices_time_range_from_pytime_range(ini_pytime, fim_pytime)
+    expected_indices_range = (0, 1)
+    self.assertEqual(returned_indices_range, expected_indices_range)
+
+
+def unittests():
+  unittest.main()
+
+
+def process():
+  #test1()
+  test2()
+  #print_map_labels_to_time_start_and_finish()  
+
 if __name__ == '__main__':
+  if 'ut' in sys.argv:
+    sys.argv.remove('ut')
+    unittests()  
   process()
-  # unittest.main()  
-  

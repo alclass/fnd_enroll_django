@@ -16,6 +16,9 @@ import sys
 
 lambda_UPPER = lambda x : x.upper()
 class Query(object):
+  '''
+  '''
+  
   def __init__(self):
     self.disciplines = Disciplines()
     self.disciplines.read_disciplines_from_xml()
@@ -65,7 +68,6 @@ class Query(object):
           print discipline.code, turma.name, eletiva_msg, turma.timetable.show_timetable_in_1_line(), turma.instructor
   
   
-
     
 def dispatch_for_commands():
   query = Query()

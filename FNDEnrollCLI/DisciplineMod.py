@@ -7,6 +7,7 @@
 #import codecs
 from datetime import time # date #, timedelta
 #import os
+import sys
 
 import __init__
 import local_settings as ls
@@ -25,6 +26,8 @@ L8  IVAN SIMOES GARCIA
 
 from TimeTableDictMod import TimeTableDict 
 from DisciplinesComplementMod import DisciplinesComplement
+from TurmaMod import Turma
+from timeutils import K
 
 default_facultadas_id_list = None
 def get_default_facultadas_id_list():
@@ -35,58 +38,10 @@ def get_default_facultadas_id_list():
   default_facultadas_id_list = []
   for line in lines:
     discipline_id = line.lstrip(' \t').rstrip(' \t\r\n')
-    default_facultadas_id_list.append(discipline_id)
+    if discipline_id not in default_facultadas_id_list: 
+      default_facultadas_id_list.append(discipline_id)
   return default_facultadas_id_list
 
-
-class Turma(object):
-  
-  def __init__(self, turma_code_number):
-    self.code = turma_code_number    
-    self.name = None
-    self.instructor = None
-    self.timetable = TimeTableDict()
-
-  def add_timetable_element(self, weekday, time_range):
-    if not timeutils.is_time_range_a_tuple_of_times(time_range):
-      return False
-    self.timetable[weekday] = time_range
-    return True
-  
-  def does_turma_happen_at_time_labels(self, weekday, p_time_labels):
-    time_labels = self.timetable.get_time_labels_for_weekday(weekday)
-    if time_labels == None or time_labels == []:
-      return False
-    for p_time_label in p_time_labels:
-      if p_time_label not in time_labels:
-        return False 
-    return True
-  
-  def __unicode__(self):
-    outstr = u'Turma nº %s :: %s\n' %(self.code, self.name)
-    outstr += u'Prof.: %s\n' %self.instructor
-    outstr += str(self.timetable)
-    return outstr
-
-  def __str__(self):
-    return self.__unicode__()
-    
-
-  def add_timetable_element_from_str_time_range(self, weekday, str_time_range):
-    if weekday not in xrange(0, 7):
-      return False
-    try:
-      pp = str_time_range.split(' ')
-      str_time_start, str_time_finish = pp[0], pp[2]
-      time_start  = timeutils.get_time_from_str_time(str_time_start)
-      time_finish = timeutils.get_time_from_str_time(str_time_finish)
-      if time_start == None or time_finish == None:
-        return False
-      time_range  = (time_start, time_finish)
-      return self.add_timetable_element(weekday, time_range)
-    except IndexError:
-      pass
-    return False
 
 
 class Discipline(object):
@@ -113,43 +68,6 @@ class Discipline(object):
   def get_all_stored_disciplines():
     return Discipline.instance_store_dict.values()
 
-  def __init__(self, code):
-    '''
-    '''
-    self.code = code
-    self.turmas_dict = {}
-
-  def add_new_turma(self, turma_code_number):
-    new_turma = Turma(turma_code_number)
-    self.turmas_dict[turma_code_number] = new_turma 
-    self.current_turma_code = turma_code_number
-    
-  def get_current_turma(self):
-    return self.turmas_dict[self.current_turma_code]
-
-  def get_turmas(self):
-    return self.turmas_dict.values()
-  
-  @staticmethod
-  def get_facultadas():
-    facultadas_dict = DisciplinesComplement.get_facultadas_dict()
-    if facultadas_dict == None:
-      return []
-    disciplines = []
-    for code in facultadas_dict.keys():
-      discipline = Discipline.get_discipline_from_store_or_None(code)
-      if discipline != None:
-        disciplines.append(discipline)
-    return disciplines
-
-  def is_it_facultada(self):
-    facultadas_dict = DisciplinesComplement.get_facultadas_dict()
-    if facultadas_dict == None:
-      return False
-    if self.code in facultadas_dict.keys():
-      return True
-    return False
-
   @staticmethod
   def get_cursadas():
     coursed_already_dict = DisciplinesComplement.get_cursadas_dict()
@@ -162,6 +80,52 @@ class Discipline(object):
         disciplines.append(discipline)
     return disciplines
   
+  @staticmethod
+  def get_facultadas():
+    facultadas_dict = DisciplinesComplement.get_facultadas_dict()
+    if facultadas_dict == None:
+      return []
+
+    disciplines = []
+    for code in facultadas_dict.keys():
+      discipline = Discipline.get_discipline_from_store_or_None(code)
+      if discipline != None:
+        disciplines.append(discipline)
+    return disciplines
+
+  def __init__(self, code):
+    '''
+    '''
+    self.code = code
+    self.turmas_dict = {}
+    self.current_turma = None #Turma() # this is a -1 turma, ie, a sort-of null turma
+    self.name = None
+
+  def add_turma(self, turma):
+    '''
+    3 things happen here:
+    1) The turma object (reference) receives self (the discipline itself), a registration act;
+    2) The turma object (reference) becomes the "current_turma"
+    3) The turma object (reference) is stocked in the turmas_dict
+    '''
+    turma.discipline = self
+    self.current_turma = turma
+    self.turmas_dict[turma.code] = self.current_turma
+    
+  def get_current_turma(self):
+    return self.current_turma
+
+  def get_turmas(self):
+    return self.turmas_dict.values()
+
+  def is_it_facultada(self):
+    facultadas_dict = DisciplinesComplement.get_facultadas_dict()
+    if facultadas_dict == None:
+      return False
+    if self.code in facultadas_dict.keys():
+      return True
+    return False
+  
   def is_it_cursada(self):
     coursed_already_dict = DisciplinesComplement.get_cursadas_dict()
     if coursed_already_dict == None:
@@ -173,8 +137,8 @@ class Discipline(object):
   def __unicode__(self):
     outstr = u'Disciplina: %s\n' %self.code 
     outstr += u'Turma(s):\n'
-    for turma in self.turmas:
-      outstr += str(turma)
+    for turma in self.get_turmas():
+      outstr += unicode(turma)
     return outstr
 
   def __str__(self):
@@ -183,22 +147,44 @@ class Discipline(object):
 
 def test1():
   code = 'IUS518'
-  d = Discipline(code)
-  d.current_turma.code = '1234'
-  d.current_turma.name = 'Direito da Integração'
-  d.current_turma.instructor = 'João Alves'
-  #
-  time_start  = time(hour=7,minute=30)
-  time_finish = time(hour=9,minute=10)
-  time_range  = time_start, time_finish
-  result = d.current_turma.add_timetable_element(0, time_range)
-  print 'Added', time_range, result
-  time_start  = time(hour=10,minute=30)
-  time_finish = time(hour=11,minute=20)
-  time_range  = time_start, time_finish
-  result = d.current_turma.add_timetable_element(2, time_range)
-  print 'Added', time_range, result
-  print d
+  discipline = Discipline(code)
+  discipline.name = 'Direito da Integração'
+  turma = Turma(turma_code_number='1234')
+  turma.instructor = 'João Alves'
+  discipline.add_turma(turma)
+  
+  bool_result = discipline.current_turma.add_timetable_element(K.MONDAY, K.M1, K.M2)
+  pytime_range = K.get_pytime_range_from_time_labels(K.M1, K.M2)
+  print 'Added', pytime_range, bool_result
+  bool_result = discipline.current_turma.add_timetable_element(K.MONDAY, K.M1, K.M2)
+  pytime_range = K.get_pytime_range_from_time_labels(K.M4, K.M5)
+  print 'Added', pytime_range, bool_result
+  print unicode(discipline)
+
+
+import unittest
+class TestCase1(unittest.TestCase):
+
+  def setUp(self):
+    pass
+
+  def test1_(self):
+    discipline_code = 'IUS518'
+    discipline = Discipline(discipline_code)
+    discipline_name = 'Direito da Integração'
+    discipline.name = discipline_name 
+    turma_code = '1234'
+    turma = Turma(turma_code)
+    turma.instructor = 'João Alves'
+    discipline.add_turma(turma)
+    self.assertEqual(discipline.code, discipline_code)
+    self.assertEqual(discipline.name, discipline_name)
+    self.assertEqual(discipline.get_current_turma(), turma)
+    self.assertEqual(discipline.get_current_turma().code, turma_code)
+    
+
+def unittests():
+  unittest.main()
 
 
 def process():
@@ -206,6 +192,9 @@ def process():
   print id_list
   print 'Total', len(id_list)
   test1()
-        
+
 if __name__ == '__main__':
+  if 'ut' in sys.argv:
+    sys.argv.remove('ut')
+    unittests()  
   process()

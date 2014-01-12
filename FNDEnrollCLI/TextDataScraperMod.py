@@ -4,10 +4,12 @@
 
 TextDataScraperMod.py
 
-This class was designed/implemented because the data source HTML was, unfortunately, mal-formed.
+This class was designed/implemented because the UFRJ's HTML data source was, unfortunately, ill-formed.
 
 How the data source TEXT is formed:
 In a browser, Selecting All, copying and pasting the text has been a Plan-B solution (at least for the time being).
+
+The text result of this Copy&Paste should look like the following:
 
 L1 IUE514
 L2  
@@ -18,19 +20,24 @@ L6
 L7 16:40 às 18:20
 L8  IVAN SIMOES GARCIA
 
+Class TextDataScraper scrapes these 8 lines (L1 to L8 above) and saves all "turmas" in an XML file.
+This XML file is read later on and modeled by class Discipline.
+A list of Disciplines is used to help search and query disciplines and times (see query.py). 
 '''
 
 import codecs
-#import datetime
-from datetime import time #, timedelta
-import os
+import sys
 import xml.etree.ElementTree as ET
+
 import __init__
 import local_settings as ls
 import timeutils
+#from timeutils import K
 
 from DisciplineMod import Discipline
 from DisciplinesMod import Disciplines
+from TurmaMod import Turma
+#from IniFimTupleMod import IniFimTuple
 
 import string
 UPPERCASE_26_LETTERS = string.letters[26:]
@@ -132,10 +139,11 @@ class TextDataScraper(object):
         discipline.is_elective = IS_ELECTIVE 
         continue        
       if is_line_turma_ie_a_number(line):
-        turma_code_number = int(line)
-        discipline.add_new_turma(turma_code_number)
+        turma_code = int(line)
+        turma = Turma(turma_code)
+        discipline.add_turma(turma)
         #discipline.current_turma.code = turma_code_number 
-        self.turmas_code.append(turma_code_number)
+        self.turmas_code.append(turma_code)
         next_is_discipline_name = True
         continue
       if line in timeutils.dict_pt_3_letter_weekday.values():
@@ -147,8 +155,10 @@ class TextDataScraper(object):
         next_is_discipline_name = False
         continue
       time_range = return_time_range_from_str_from_to_time_or_None(line)
+      print u'**** time_range %s' %discipline, '+++time_range', time_range, '++++line', line
       if time_range != None and keep_ahead_weekday != None:
-        has_been_added = discipline.get_current_turma().add_timetable_element(keep_ahead_weekday, time_range)
+        time_start, time_finish = time_range
+        has_been_added = discipline.get_current_turma().add_timetable_element_with_pytimes(keep_ahead_weekday, time_start, time_finish)
         if not has_been_added:
           print time_range, 'has not been added.' 
         keep_ahead_weekday = None
@@ -198,13 +208,14 @@ class TextDataScraper(object):
           timetable_tag =  ET.SubElement(turma_tag, 'timetable')
           weekdays.sort()
           for weekday in weekdays:
-            time_ranges = turma.timetable[weekday]
-            for time_range in time_ranges:
+            ini_fim_pairs = turma.timetable[weekday]
+            for ini_fim_tuple in ini_fim_pairs:
+              ini_str_time, fim_str_time = ini_fim_tuple.as_str_hour_min_time_range()
               time_session_tag = ET.SubElement(timetable_tag, 'time_session', attrib={'weekday':str(weekday)} )
               time_start_tag = ET.SubElement(time_session_tag, 'time_start')
-              time_start_tag.text = timeutils.get_str_hour_minute_from_pytime(time_range[0])
+              time_start_tag.text = ini_str_time 
               time_finish_tag = ET.SubElement(time_session_tag, 'time_finish')
-              time_finish_tag.text = timeutils.get_str_hour_minute_from_pytime(time_range[1])
+              time_finish_tag.text = fim_str_time
             
     # wrap it in an ElementTree instance, and save as XML
     tree = ET.ElementTree(root)
@@ -225,6 +236,20 @@ def find_by_weekday(data_obj):
     for discipline in disciplines:
       print discipline._id, discipline.name 
     
+
+import unittest
+
+class TestCase(unittest.TestCase):
+  
+  def test_1(self):
+    pass
+
+
+
+def unittests():
+  unittest.main()
+
+
 def process():
   data_obj = TextDataScraper()
   data_obj.read_data()
@@ -241,6 +266,9 @@ def process():
   data_obj.turmas_code.sort()
   print data_obj.turmas_code
   '''
-        
+
 if __name__ == '__main__':
+  if 'ut' in sys.argv:
+    sys.argv.remove('ut')
+    unittests()
   process()
